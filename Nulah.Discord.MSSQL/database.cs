@@ -15,7 +15,7 @@ namespace Nulah.Discord.MSSQL {
         [Key]
         public Guid Id { get; set; }
         public ulong UserId { get; set; }
-        public ulong GuildId { get; set; }
+        //public ulong GuildId { get; set; }
         public string GameName { get; set; }
         public DateTime Start_UTC { get; set; }
         public DateTime End_UTC { get; set; }

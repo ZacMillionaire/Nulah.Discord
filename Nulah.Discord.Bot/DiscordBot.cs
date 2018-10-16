@@ -122,6 +122,12 @@ namespace Nulah.Discord.Bot {
         }
 
         private async Task _discordClient_PresenceUpdated(PresenceUpdateEventArgs e) {
+            // if e.Game isn't null but timestamps is, it's a rich presence update for some game stat, not a game ending.
+            // Both e.Game and e.PresenceBefore.Game can be null if the bot is connected to 2 guilds with the same person in both.
+            // In either case, return as we can't do anything
+            if(e.Game != null && e.Game.Timestamps == null || e.Game == null && e.PresenceBefore.Game == null) {
+                return;
+            }
             // Timestamp is broken and won't actually return me a valid DateTime, despite having a _start value
             // ...as an internal field.
             // Well fuck that, if it exists, I can get it out.
@@ -154,13 +160,13 @@ namespace Nulah.Discord.Bot {
                 if(e.PresenceBefore.Game != null) {
                     var gameStatus = new GamePlaytime {
                         UserId = e.Member.Id,
-                        GuildId = e.Guild.Id,
+                        //GuildId = e.Guild.Id,
                         GameName = tg.Name,
                         Start_UTC = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds((double)start), // we can be 100% sure we have a value for start, so its safe to cast to a long
                         End_UTC = DateTime.UtcNow,
                         Id = _currentGameTracker[dictKey]
                     };
-                    await Task.Run(async () => {
+                    Task.Run(async () => {
                         using(var dbctx = new DiscordContext()) {
                             dbctx.GamePlaytimes.Add(gameStatus);
                             await dbctx.SaveChangesAsync();
