@@ -3,21 +3,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Nulah.Discord.MSSQL {
     public class User {
-        [Key]
         public ulong Id { get; set; }
         public int Discriminator { get; set; }
         public string Username { get; set; }
         public ulong GuildId { get; set; }
     }
 
-    // This name is a bit iffy but I couldn't think of better
-    public class GamePlaytime {
+    public class PresenceEvent {
+        // EF Core will complain if you have a table without a key so...yeah, here one is
         [Key]
-        public Guid Id { get; set; }
+        public int Id { get; set; }
         public ulong UserId { get; set; }
-        //public ulong GuildId { get; set; }
+        public ulong GuildId { get; set; }
+        public string Status { get; set; }
+        public DateTime Timestamp_UTC { get; set; }
         public string GameName { get; set; }
-        public DateTime Start_UTC { get; set; }
-        public DateTime End_UTC { get; set; }
+        public ulong? GameId { get; set; }
     }
 }

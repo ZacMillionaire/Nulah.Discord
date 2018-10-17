@@ -3,8 +3,7 @@
 namespace Nulah.Discord.MSSQL {
     public class DiscordContext : DbContext {
         public DbSet<User> Users { get; set; }
-        // This needs a better name...
-        public DbSet<GamePlaytime> GamePlaytimes { get; set; }
+        public DbSet<PresenceEvent> PresenceEvents { get; set; }
 
         private readonly string _sqlConnectionString;
 

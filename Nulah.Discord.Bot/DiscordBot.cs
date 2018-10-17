@@ -4,9 +4,12 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Net.Abstractions;
 using Nulah.Discord.Bot.Commands;
+using Nulah.Discord.Bot.Management;
+using Nulah.Discord.Bot.Models;
 using Nulah.Discord.MSSQL;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -14,31 +17,38 @@ namespace Nulah.Discord.Bot {
     public class DiscordBot {
         private readonly DiscordClient _discordClient;
         //private readonly Timer _t;
-        //private readonly DiscordContext _dbctx;
-        private readonly Dictionary<string, Guid> _currentGameTracker = new Dictionary<string, Guid>();
 
-        public DiscordBot(string clientToken) {
+        private readonly UserManagement _userManager;
+        private readonly PresenceManagement _presenceManager;
+
+        public DiscordBot(AppSettings appSettings) {
             _discordClient = new DiscordClient(new DiscordConfiguration {
-                Token = clientToken,
+                Token = appSettings.DiscordBotToken,
                 TokenType = TokenType.Bot,
                 LogLevel = LogLevel.Debug,
                 UseInternalLogHandler = true
             });
 
+            _userManager = new UserManagement(appSettings.MSSQLConnectionString);
+            _presenceManager = new PresenceManagement(appSettings.MSSQLConnectionString);
+
+            var dependency = new DependencyCollectionBuilder();
+            dependency.AddInstance(_userManager);
 
             var commands = _discordClient.UseCommandsNext(new CommandsNextConfiguration {
-                StringPrefix = "+"
+                StringPrefix = "+",
+                Dependencies = dependency.Build()
             });
 
             commands.RegisterCommands<LinkCommand>();
             commands.RegisterCommands<RegisterCommand>();
 
 
-
             //_discordClient.MessageCreated += _discordClient_MessageCreated;
-            _discordClient.PresenceUpdated += _discordClient_PresenceUpdated;
-            _discordClient.UserUpdated += _discordClient_UserUpdated;
+            //_discordClient.PresenceUpdated += _discordClient_PresenceUpdated;
+            //_discordClient.UserUpdated += _discordClient_UserUpdated;
             _discordClient.Ready += _discordClient_Ready;
+            _discordClient.Heartbeated += _discordClient_Heartbeated;
             //_discordClient.GuildAvailable += _discordClient_GuildAvailable;
             //_discordClient.GuildMemberAdded += _discordClient_GuildMemberAdded;
             // triggers on nick changes
@@ -48,6 +58,28 @@ namespace Nulah.Discord.Bot {
                 await Connect();
             });
 
+        }
+
+        private async Task _discordClient_Heartbeated(HeartbeatEventArgs e) {
+            var utcNow = DateTime.UtcNow;
+            await Task.Run(async () => {
+                if(e.Client.Guilds.Count > 0) {
+                    var presences = e.Client.Guilds.Select(x => new {
+                        Presences = x.Value.Members.Where(y => y.IsCurrent == false && _userManager.UserIsRegistered(y.Id, x.Key))
+                            .Select(y => new PresenceEvent {
+                                UserId = y.Id,
+                                GuildId = x.Key,
+                                Status = ( y.Presence == null ) ? "offline" : y.Presence.Status.ToString().ToLower(),
+                                GameId = y.Presence?.Game?.ApplicationId,
+                                GameName = y.Presence?.Game?.Name,
+                                Timestamp_UTC = utcNow
+                            })
+                    })
+                    .SelectMany(x => x.Presences).ToList();
+
+                    await _presenceManager.AddPresences(presences);
+                }
+            });
         }
 
         /// <summary>
@@ -122,12 +154,19 @@ namespace Nulah.Discord.Bot {
         }
 
         private async Task _discordClient_PresenceUpdated(PresenceUpdateEventArgs e) {
-            // if e.Game isn't null but timestamps is, it's a rich presence update for some game stat, not a game ending.
-            // Both e.Game and e.PresenceBefore.Game can be null if the bot is connected to 2 guilds with the same person in both.
-            // In either case, return as we can't do anything
-            if(e.Game != null && e.Game.Timestamps == null || e.Game == null && e.PresenceBefore.Game == null) {
-                return;
+            try {
+                if(e.Game == null || e.PresenceBefore.Game == null) {
+                    GenericPresenceChangeEvent(e);
+                } else if(e.PresenceBefore.Game != null) {
+                    GameplayStopEvent(e);
+                } else if(e.Game != null) {
+                    GameplayStartEvent(e);
+                }
+                await Task.Run(() => { });
+            } catch(Exception ee) {
+                throw;
             }
+            /*
             // Timestamp is broken and won't actually return me a valid DateTime, despite having a _start value
             // ...as an internal field.
             // Well fuck that, if it exists, I can get it out.
@@ -166,7 +205,7 @@ namespace Nulah.Discord.Bot {
                         End_UTC = DateTime.UtcNow,
                         Id = _currentGameTracker[dictKey]
                     };
-                    Task.Run(async () => {
+                    await Task.Run(async () => {
                         using(var dbctx = new DiscordContext()) {
                             dbctx.GamePlaytimes.Add(gameStatus);
                             await dbctx.SaveChangesAsync();
@@ -175,6 +214,31 @@ namespace Nulah.Discord.Bot {
                     });
                 }
 
+            }*/
+        }
+
+        private void GameplayStartEvent(PresenceUpdateEventArgs presenceUpdate) {
+        }
+
+        private void GameplayStopEvent(PresenceUpdateEventArgs presenceUpdate) {
+        }
+
+        private void GenericPresenceChangeEvent(PresenceUpdateEventArgs presenceUpdate) {
+            if(_userManager.UserIsRegistered(presenceUpdate.Member.Id, presenceUpdate.Member.Guild.Id)) {
+                var presenceEvent = new PublicPresenceEvent {
+                    User = new PublicDiscordUser {
+                        Id = presenceUpdate.Member.Id,
+                        Discriminator = int.Parse(presenceUpdate.Member.Discriminator),
+                        GuildId = presenceUpdate.Member.Guild.Id,
+                        Username = presenceUpdate.Member.Username
+                    },
+                    Time_UTC = DateTime.UtcNow,
+                    PreviousState = presenceUpdate.PresenceBefore.Status.ToString().ToLower(), // The fuck is this different to the new presence below
+                    NewState = presenceUpdate.Status
+                };
+                Console.WriteLine($"Presence change event for a registered user, {presenceUpdate.Member.DisplayName} in {presenceUpdate.Guild.Name}");
+            } else {
+                Console.WriteLine($"Presence change event for an unregistered user, {presenceUpdate.Member.DisplayName} in {presenceUpdate.Guild.Name}");
             }
         }
 

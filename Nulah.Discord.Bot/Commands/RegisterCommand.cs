@@ -1,11 +1,18 @@
 ﻿using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
+using Nulah.Discord.Bot.Management;
 using Nulah.Discord.MSSQL;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Nulah.Discord.Bot.Commands {
     public class RegisterCommand {
+        private readonly UserManagement _userManagement;
+
+        public RegisterCommand(UserManagement userManagement) {
+            _userManagement = userManagement;
+        }
+
         [Command("Register")]
         [Aliases("RegMe")]
         public async Task Register(CommandContext commandContext) {
@@ -19,14 +26,13 @@ namespace Nulah.Discord.Bot.Commands {
 
             await Task.Run(async () => {
                 await commandContext.Message.DeleteAsync();
-                using(var dbctx = new DiscordContext()) {
-                    if(dbctx.Users.Any(x => x.Id == newUser.Id && x.GuildId == newUser.GuildId) == false) {
-                        dbctx.Add(newUser);
-                        await dbctx.SaveChangesAsync();
-                        await commandContext.Member.SendMessageAsync($"All good, you're now registered, {commandContext.Member.DisplayName}!");
-                    } else {
-                        await commandContext.Member.SendMessageAsync($"No need to register again, {commandContext.Member.DisplayName}, I still know who you are!");
-                    }
+                var userRegistered = await _userManagement.RegisterUser(newUser);
+
+                if(userRegistered == true) {
+                    await commandContext.Member.SendMessageAsync($"All good, you're now registered for {commandContext.Member.Guild.Name}, {commandContext.Member.DisplayName}!" +
+                        $"From now on, I'll track your channel activity including whatever you might be playing as best I can!");
+                } else {
+                    await commandContext.Member.SendMessageAsync($"No need to register for {commandContext.Member.Guild.Name} again, {commandContext.Member.DisplayName}, I still know who you are!");
                 }
             });
         }
