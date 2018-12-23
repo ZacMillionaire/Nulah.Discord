@@ -16,7 +16,8 @@ namespace Nulah.Discord.MSSQL {
         }
 
         public DiscordContext() {
-            _sqlConnectionString = "YOUR_DB_CONNECTION_STRING_HERE";
+            //_sqlConnectionString = "Data Source=192.168.1.101,1433\\HOMEEXPRESS;Initial Catalog=NulahDiscord_Dev;Integrated Security=False;User ID=HomeExpress;Password=P@ssw0rd;Connect Timeout=30;Encrypt=False;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;";
+            _sqlConnectionString = "Server=localhost\\SQLEXPRESS;Database=DiscordLogger;Trusted_Connection=True;";
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {

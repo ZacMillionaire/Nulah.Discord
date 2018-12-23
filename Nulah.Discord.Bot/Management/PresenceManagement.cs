@@ -13,6 +13,7 @@ namespace Nulah.Discord.Bot.Management {
         }
 
         public async Task AddPresences(List<PresenceEvent> presences) {
+            /*
             try {
                 using(var dbctx = new DiscordContext(_mssqlConnectionString)) {
                     dbctx.AddRange(presences);
@@ -22,7 +23,7 @@ namespace Nulah.Discord.Bot.Management {
                 Console.WriteLine(e.GetBaseException().Message);
                 Console.WriteLine(e.StackTrace);
                 throw;
-            }
+            }*/
         }
     }
 }

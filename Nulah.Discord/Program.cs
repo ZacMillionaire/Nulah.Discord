@@ -18,7 +18,7 @@ namespace Nulah.Discord {
 
         static AppSettings ParseAppSettings() {
             try {
-                using(FileStream fs = new FileStream($"{AppContext.BaseDirectory}/appsettings.json", FileMode.Open, FileAccess.Read, FileShare.Read)) {
+                using(FileStream fs = new FileStream($"{AppContext.BaseDirectory}/appsettings.dev.json", FileMode.Open, FileAccess.Read, FileShare.Read)) {
                     using(StreamReader sr = new StreamReader(fs)) {
                         var contents = sr.ReadToEnd();
                         return JsonConvert.DeserializeObject<AppSettings>(contents);

@@ -260,3 +260,4 @@ paket-files/
 __pycache__/
 *.pyc
 /Nulah.Discord.MSSQL/Migrations
+/Nulah.Discord/appsettings.dev.json
