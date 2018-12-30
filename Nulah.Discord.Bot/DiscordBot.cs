@@ -25,6 +25,12 @@ namespace Nulah.Discord.Bot {
 
         private readonly ServerManager _serverManager;
         private readonly UserManagement _userManager;
+        private readonly GuildManagement _guildManager;
+        private readonly RoleManagement _roleManager;
+        private readonly ChannelManagement _channelManager;
+
+
+        private readonly MessageHandler _messageHandler;
         //private readonly PresenceManagement _presenceManager;
         //private readonly LinkManagement _linkManager;
 
@@ -41,11 +47,15 @@ namespace Nulah.Discord.Bot {
             });
 
             _userManager = new UserManagement(appSettings.MSSQLConnectionString);
+            _guildManager = new GuildManagement(appSettings.MSSQLConnectionString);
+            _roleManager = new RoleManagement(appSettings.MSSQLConnectionString);
+            _channelManager = new ChannelManagement(appSettings.MSSQLConnectionString);
             //_presenceManager = new PresenceManagement(appSettings.MSSQLConnectionString);
             //_linkManager = new LinkManagement(appSettings.MSSQLConnectionString);
 
-            _serverManager = new ServerManager(_userManager);
+            _serverManager = new ServerManager(_userManager, _guildManager, _roleManager, _channelManager);
 
+            _messageHandler = new MessageHandler(appSettings.MSSQLConnectionString);
             //var dependency = new DependencyCollectionBuilder();
             //dependency.AddInstance(_userManager);
 
@@ -59,6 +69,7 @@ namespace Nulah.Discord.Bot {
 
 
             _discordClient.MessageCreated += _discordClient_MessageCreated;
+            _discordClient.MessageUpdated += _discordClient_MessageUpdated;
             _discordClient.PresenceUpdated += _discordClient_PresenceUpdated;
             //_discordClient.UserUpdated += _discordClient_UserUpdated;
             _discordClient.Ready += _discordClient_Ready;
@@ -75,9 +86,9 @@ namespace Nulah.Discord.Bot {
             });
         }
 
-        private async Task _discordClient_Heartbeated(HeartbeatEventArgs e) {
+        //private async Task _discordClient_Heartbeated(HeartbeatEventArgs e) {
 
-        }
+        //}
 
         /// <summary>
         /// Can be used for nickname changes
@@ -168,7 +179,7 @@ namespace Nulah.Discord.Bot {
                 User = new PublicDiscordUser {
                     Id = presenceUpdate.Member.Id,
                     Discriminator = int.Parse(presenceUpdate.Member.Discriminator),
-                    GuildId = presenceUpdate.Member.Guild.Id,
+                    //GuildId = presenceUpdate.Member.Guild.Id,
                     Username = presenceUpdate.Member.Username
                 },
                 Time_UTC = DateTime.UtcNow,
@@ -182,17 +193,16 @@ namespace Nulah.Discord.Bot {
 
         private async Task _discordClient_MessageCreated(MessageCreateEventArgs e) {
             await Task.Run(() => {
-                if(e.Author.IsCurrent == false) {
-                    var message = e.Message;
-                    var discordEmojiParse = Regex.Matches(e.Message.Content, @"<(\w{0,}):(\w+):(\d+)>");
-                    var discordEmojisRemoved = Regex.Replace(e.Message.Content, @"<\w{0,}:\w+:\d+>", string.Empty);
-                    var length = new System.Globalization.StringInfo(discordEmojisRemoved).LengthInTextElements;
-                    var words = Regex.Matches(discordEmojisRemoved, @"[^\s]+").Count;
-                    //_linkManager.TryParseForLinks(e.Message.Content);
-                    //await e.Message.RespondAsync($"echo {e.Message.Content}");
-                }
+                _messageHandler.ParseMessage(e.Message);
             });
         }
+
+        private async Task _discordClient_MessageUpdated(MessageUpdateEventArgs e) {
+            await Task.Run(() => {
+                _messageHandler.ParseMessage(e.Message);
+            });
+        }
+
 
         public void Disconnect() {
             Task.Run(async () => await _discordClient.DisconnectAsync()).Wait();

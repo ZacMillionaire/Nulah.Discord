@@ -2,6 +2,8 @@
 using DSharpPlus.CommandsNext.Attributes;
 using Nulah.Discord.Bot.Management;
 using Nulah.Discord.MSSQL;
+using Nulah.Discord.MSSQL.DbModels;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,9 +18,10 @@ namespace Nulah.Discord.Bot.Commands {
         [Command("Register")]
         [Aliases("RegMe")]
         public async Task Register(CommandContext commandContext) {
-
+            throw new NotImplementedException();
+            /*
             var newUser = new User {
-                Id = commandContext.Member.Id,
+                UserId = commandContext.Member.Id,
                 Discriminator = int.Parse(commandContext.Member.Discriminator),
                 Username = commandContext.Member.Username,
                 GuildId = commandContext.Member.Guild.Id
@@ -34,7 +37,7 @@ namespace Nulah.Discord.Bot.Commands {
                 } else {
                     await commandContext.Member.SendMessageAsync($"No need to register for {commandContext.Member.Guild.Name} again, {commandContext.Member.DisplayName}, I still know who you are!");
                 }
-            });
+            });*/
         }
     }
 }

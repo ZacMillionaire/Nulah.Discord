@@ -3,30 +3,47 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Nulah.Discord.Bot.Management {
     public class ServerManager {
         private readonly UserManagement _userManagement;
+        private readonly GuildManagement _guildManagement;
+        private readonly RoleManagement _roleMangement;
+        private readonly ChannelManagement _channelManagement;
 
-        public ServerManager(UserManagement userManagement) {
+        public ServerManager(UserManagement userManagement, GuildManagement guildManagement, RoleManagement roleManagement, ChannelManagement channelManagement) {
             _userManagement = userManagement;
+            _guildManagement = guildManagement;
+            _roleMangement = roleManagement;
+            _channelManagement = channelManagement;
         }
 
-        public void GetUsers(Dictionary<ulong, IEnumerable<DiscordMember>> presences) {
-            _userManagement.DiscordMemberToModel(presences.SelectMany(x => x.Value).ToList());
+        public void CreateOrUpdateGuilds(List<DiscordGuild> guilds) {
+            _guildManagement.CreateOrUpdateGuilds(guilds);
         }
 
-        public void GetChannels(Dictionary<ulong, IReadOnlyList<DiscordChannel>> dictionary) {
+        private void CreateOrUpdateUsers(Dictionary<ulong, IReadOnlyList<DiscordMember>> members) {
+            _userManagement.CreateOrUpdateUsers(members);
         }
 
-        public void GetRoles(Dictionary<ulong, IReadOnlyList<DiscordRole>> dictionary) {
+        public void CreateOrUpdateChannels(Dictionary<ulong, IReadOnlyList<DiscordChannel>> channels) {
+            _channelManagement.CreateOrUpdateChannels(channels);
+        }
 
+        public void CreateOrUpdateRoles(Dictionary<ulong, IReadOnlyList<DiscordRole>> roles) {
+            _roleMangement.CreateOrUpdateRoles(roles);
         }
 
         public void UpdateGuildData(IReadOnlyDictionary<ulong, DiscordGuild> guilds) {
-            GetUsers(guilds.ToDictionary(x => x.Key, x => x.Value.Members.Where(y => y.IsCurrent == false)));
-            GetRoles(guilds.ToDictionary(x => x.Key, x => x.Value.Roles));
-            GetChannels(guilds.ToDictionary(x => x.Key, x => x.Value.Channels));
+            try {
+                CreateOrUpdateGuilds(guilds.Select(x => x.Value).ToList());
+                CreateOrUpdateRoles(guilds.ToDictionary(x => x.Key, x => x.Value.Roles));
+                CreateOrUpdateChannels(guilds.ToDictionary(x => x.Key, x => x.Value.Channels));
+                CreateOrUpdateUsers(guilds.ToDictionary(x => x.Key, x => x.Value.Members));
+            } catch(Exception e) {
+                throw;
+            }
         }
     }
 }
